@@ -14,7 +14,7 @@ export default class ApplicationSet {
   constructor(allApplications) {
     this.allApplications = allApplications;
     this.applicationSetData = new ApplicationSetData(this);
-    this._busy = 0;
+    this._busyPromise = null;
   }
   
   get data() {
@@ -162,20 +162,28 @@ export default class ApplicationSet {
   // manage busy state
   // ##########################################################################
 
-  setBusy(n) {
-    this._busy += n;
+  async setBusy() {
+    await this.waitForBusy();
+
+    let resolve;
+    this._busyPromise = new Promise((r) => {
+      resolve = r;
+    });
+    this._busyPromise.finally(() => {
+      this._busyPromise = null;
+    });
+
+    return resolve;
   }
 
-  incBusy() {
-    this.setBusy(1);
-  }
-
-  decBusy() {
-    this.setBusy(-1);
+  async waitForBusy() {
+    while (this._busyPromise) {
+      await this._busyPromise;
+    }
   }
 
   isBusy() {
-    return !!this._busy;
+    return !!this._busyPromise;
   }
 
   createBusyError() {
